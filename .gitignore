@@ -1,0 +1,12 @@
+# Ignore Node modules
+node_modules/
+
+# Ignore environment files
+.env
+
+# Optional: common extras
+__pycache__/
+*.py[cod]
+*.egg-info/
+.vscode/
+.DS_Store
