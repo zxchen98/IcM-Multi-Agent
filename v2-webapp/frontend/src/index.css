@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#root,
+#root > div {
+  width: 100%;
+  height: 100%;
+}
+
+/* Additional global styles that work well with Tailwind */
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Chat specific styles */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom input styles */
+.custom-input input:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5) !important;
+  border-color: rgb(59 130 246) !important;
+}
+
+.custom-input input {
+  border: 1px solid rgb(209 213 219) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.custom-input input:hover {
+  border-color: rgb(156 163 175) !important;
+}
+
+/* Remove HeroUI default focus styles */
+.custom-input [data-focus="true"] {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.5) !important;
+}
+
+/* Multi-line input styles */
+.custom-input-multiline input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  resize: none !important;
+}
+
+.custom-input-multiline input:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.custom-input-multiline [data-focus="true"] {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.3) !important;
+  border-color: rgb(59 130 246) !important;
+}
+
+.custom-input-multiline [data-focus="true"] input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Message animations */
+.message-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.message-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+} 
