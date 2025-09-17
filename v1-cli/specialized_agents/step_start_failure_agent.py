@@ -36,6 +36,8 @@ class TSGMatchResult(BaseModel):
     action_required: str
     transfer_to: str
     match_confidence: float
+    pattern_similarity: float  # Similarity to known patterns
+    reasoning: str  # AI reasoning for the match
 
 class StepStartFailureAnalyzer:
     """Specialized analyzer for step start failure incidents"""
@@ -94,49 +96,181 @@ class StepStartFailureAnalyzer:
                 confidence_score=0.0
             )
     
-    def match_tsg_rules(self, root_cause_analysis: RootCauseAnalysis) -> TSGMatchResult:
+    def analyze_incident_and_match_tsg(self, incident_details: Dict[str, Any]) -> TSGMatchResult:
         """
         Match incident against TSG rules to determine actions
         
         Args:
-            incident_details: Incident information
-            root_cause_analysis: LLM analysis results
+            incident_details: Complete incident information from Kusto
             
         Returns:
-            TSGMatchResult: Matching results and recommended actions
+            TSGMatchResult: AI-matched TSG results with confidence metrics
         """
-
+        # Prepare known TSG patterns for AI analysis
+        known_patterns = []
         for rule in self.tsg_rules:
-            if rule["failed_step"].lower() == root_cause_analysis.failed_step.lower() \
-                and (root_cause_analysis.step_cause.lower() in rule["pattern"].lower() \
-                     or root_cause_analysis.immediate_cause.lower() in rule["pattern"].lower()):
-                print(f"✅ TSG Rule matched: {rule['description']}")
+            known_patterns.append({
+                "pattern": rule["pattern"],
+                "failed_step": rule["failed_step"],
+                "description": rule["description"],
+                "action": rule["action"],
+                "transfer_to": rule["transfer_to"]
+            })
+        
+        incident_summary = f"""
+        - ID: {incident_details.get('IncidentId', 'Unknown')}
+        - Title: {incident_details.get('Title', 'Unknown')}
+        - Summary: {incident_details.get('Summary', 'No summary')}
+        - Description: {incident_details.get('MergedText', 'No description')}
+        - Severity: {incident_details.get('Severity', 'Unknown')}
+        """
+        
+        tsg_analysis_prompt = f"""
+        You are an expert step start failure incident analyzer. Analyze the incident directly against known TSG patterns and provide comprehensive diagnosis.
+
+        INCIDENT INFORMATION:
+        {incident_summary}
+
+        KNOWN TSG PATTERNS:
+        {chr(10).join([f"- Pattern: {p['pattern']}" + chr(10) + f"  Failed Step: {p['failed_step']}" + chr(10) + f"  Description: {p['description']}" + chr(10) + f"  Action: {p['action']}" + chr(10) + f"  Transfer To: {p['transfer_to']}" + chr(10) for p in known_patterns])}
+
+        INSTRUCTIONS:
+        1. Directly analyze incident symptoms, error messages, and log content
+        2. Compare and match against known TSG patterns based on:
+           - Error message keyword matching
+           - Semantic similarity of failure symptoms
+           - Technology stack and component matching
+           - Error occurrence context environment
+        3. Provide confidence scoring (0.0-1.0):
+           - match_confidence: Overall TSG matching confidence
+           - pattern_similarity: Similarity to known patterns
+        4. If no strong match (confidence < 0.6), suggest general handling approach
+        5. Provide detailed analysis reasoning process
+
+        RESPONSE FORMAT (JSON):
+        {{
+            "matched_tsg": "Matched TSG description or 'General step start failure handling'",
+            "action_required": "Specific action to take",
+            "transfer_to": "Team to transfer to (e.g.: 'AEther/AEther', 'pipeline_team')",
+            "match_confidence": 0.0-1.0,
+            "pattern_similarity": 0.0-1.0,
+            "reasoning": "Detailed explanation of why this TSG was selected and confidence reasoning",
+            "root_cause_summary": "Brief root cause analysis summary"
+        }}
+        """
+        
+        try:
+            print("🤖 AI analyzing incident and matching TSG...")
+            response = model.invoke([HumanMessage(content=tsg_analysis_prompt)])
+            
+            # Parse AI response
+            import json
+            import re
+            
+            # Extract JSON from response
+            json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+            if json_match:
+                ai_result = json.loads(json_match.group())
+                
+                result = TSGMatchResult(
+                    matched_tsg=ai_result.get("matched_tsg", "General step start failure handling"),
+                    action_required=ai_result.get("action_required", "Manual investigation required"),
+                    transfer_to=ai_result.get("transfer_to", "pipeline_team"),
+                    match_confidence=float(ai_result.get("match_confidence", 0.3)),
+                    pattern_similarity=float(ai_result.get("pattern_similarity", 0.0)),
+                    reasoning=ai_result.get("reasoning", "AI analysis completed")
+                )
+                
+                print(f"🎯 AI Direct TSG Match: {result.matched_tsg}")
+                print(f"📊 Confidence: {result.match_confidence:.2f}, Similarity: {result.pattern_similarity:.2f}")
+                print(f"💡 Reasoning: {result.reasoning}")
+                
+                # Save root cause analysis summary for report
+                self.root_cause_summary = ai_result.get("root_cause_summary", "AI direct analysis completed")
+                
+                return result
+            else:
+                raise ValueError("Could not parse AI response as JSON")
+                
+        except Exception as e:
+            print(f"❌ AI direct TSG analysis failed: {e}")
+            # Fallback to simple rule-based matching
+            return self._fallback_incident_matching(incident_details)
+    
+    def _fallback_incident_matching(self, incident_details: Dict[str, Any]) -> TSGMatchResult:
+        """Fallback rule-based incident matching when AI fails"""
+        print("🔄 Using fallback rule-based incident matching...")
+        
+        # Simple keyword matching
+        title = incident_details.get('Title', '').lower()
+        summary = incident_details.get('Summary', '').lower()
+        description = incident_details.get('MergedText', '').lower()
+        
+        combined_text = f"{title} {summary} {description}"
+        
+        for rule in self.tsg_rules:
+            pattern_keywords = rule["pattern"].lower().split()
+            matches = sum(1 for keyword in pattern_keywords if keyword in combined_text)
+            
+            if matches >= len(pattern_keywords) * 0.5:  # At least 50% keyword match
+                print(f"✅ Fallback rule matched: {rule['description']}")
                 return TSGMatchResult(
                     matched_tsg=rule["description"],
                     action_required=rule["action"],
                     transfer_to=rule["transfer_to"],
-                    match_confidence=0.9
+                    match_confidence=0.6,  # Medium confidence
+                    pattern_similarity=0.5,
+                    reasoning="Using fallback keyword matching rule"
                 )
         
-        # No specific TSG rule matched
-        print("📋 No specific TSG rule matched, providing general guidance")
+        # No matching rules found
+        print("📋 No TSG rules matched in fallback mode")
         return TSGMatchResult(
             matched_tsg="General step start failure handling",
             action_required="Manual investigation required",
             transfer_to="pipeline_team",
-            match_confidence=0.3
+            match_confidence=0.3,
+            pattern_similarity=0.0,
+            reasoning="No specific TSG pattern found in fallback mode, using general handling approach"
+        )
+
+    def _fallback_tsg_matching(self, root_cause_analysis: RootCauseAnalysis) -> TSGMatchResult:
+        """Fallback rule-based TSG matching when AI fails"""
+        print("🔄 Using fallback rule-based TSG matching...")
+        
+        for rule in self.tsg_rules:
+            if rule["failed_step"].lower() == root_cause_analysis.failed_step.lower() \
+                and (root_cause_analysis.step_cause.lower() in rule["pattern"].lower() \
+                     or root_cause_analysis.immediate_cause.lower() in rule["pattern"].lower()):
+                print(f"✅ Fallback TSG Rule matched: {rule['description']}")
+                return TSGMatchResult(
+                    matched_tsg=rule["description"],
+                    action_required=rule["action"],
+                    transfer_to=rule["transfer_to"],
+                    match_confidence=0.8,  # Lower confidence for rule-based
+                    pattern_similarity=0.7,
+                    reasoning="Matched using fallback rule-based pattern matching"
+                )
+        
+        # No specific TSG rule matched
+        print("📋 No TSG rule matched in fallback mode")
+        return TSGMatchResult(
+            matched_tsg="General step start failure handling",
+            action_required="Manual investigation required",
+            transfer_to="pipeline_team",
+            match_confidence=0.3,
+            pattern_similarity=0.0,
+            reasoning="No specific TSG pattern matched, using general handling approach"
         )
     
     def generate_final_report(self, incident_details: Dict[str, Any], 
-                            root_cause: RootCauseAnalysis, 
                             tsg_result: TSGMatchResult) -> str:
         """
         Generate comprehensive final report with recommendations
         
         Args:
             incident_details: Original incident data
-            root_cause: LLM analysis results
-            tsg_result: TSG matching results
+            tsg_result: TSG matching results (includes root cause analysis summary)
             
         Returns:
             str: Formatted final report
@@ -146,20 +280,18 @@ class StepStartFailureAnalyzer:
 ================================================
 
 📋 **Incident Information:**
-- Incident ID: {incident_details.get('incident_id', 'Unknown')}
-- Title: {incident_details.get('title', 'Unknown')}
-- Severity: {incident_details.get('severity', 'Unknown')}
+- Incident ID: {incident_details.get('IncidentId', 'Unknown')}
+- Title: {incident_details.get('Title', 'Unknown')}
+- Severity: {incident_details.get('Severity', 'Unknown')}
 
-🔍 **Root Cause Analysis:**
-- **Failed Step:** {root_cause.failed_step}
-- **Immediate Cause:** {root_cause.immediate_cause}
-- **Step Cause:** {root_cause.step_cause}
-- **Confidence:** {root_cause.confidence_score:.1%}
+🔍 **AI Root Cause Analysis Summary:**
+{getattr(self, 'root_cause_summary', 'AI direct analysis completed')}
 
-
-⚡ **TSG Rule Match:**
+⚡ **AI TSG Analysis:**
 - **Matched Rule:** {tsg_result.matched_tsg}
 - **Match Confidence:** {tsg_result.match_confidence:.1%}
+- **Pattern Similarity:** {tsg_result.pattern_similarity:.1%}
+- **AI Reasoning:** {tsg_result.reasoning}
 
 🎯 **Recommended Action:**
 - **Action:** {tsg_result.action_required}
@@ -169,7 +301,7 @@ class StepStartFailureAnalyzer:
 """
         return report
 
-def step_start_failure_agent(state: MessagesState) -> Command[Literal[END]]:
+def step_start_failure_agent(state: MessagesState) -> Command[Literal["__end__"]]:
     """
     Step Start Failure Agent: Specialized in analyzing and resolving step start failure incidents
     """
@@ -193,9 +325,10 @@ def step_start_failure_agent(state: MessagesState) -> Command[Literal[END]]:
                     break
     
     if not incident_id:
+        error_msg = "Step Start Failure Agent: No incident ID found for analysis."
         return Command(
             goto=END,
-            update={"messages": [AIMessage(content="Step Start Failure Agent: No incident ID found for analysis.")]}
+            update={"messages": [AIMessage(content=error_msg)]}
         )
     
     print("\n\n")
@@ -209,24 +342,22 @@ def step_start_failure_agent(state: MessagesState) -> Command[Literal[END]]:
         # Step 1: Query detailed incident information
         print("\n📋 Step 1: Querying incident details...")
         incident_details = kusto_tool.query_incident_details(incident_id)
+        print(incident_details)
         
         if not incident_details or incident_details.get('title') == 'Unknown':
+            error_msg = f"Step Start Failure Agent: Unable to retrieve details for incident {incident_id}"
             return Command(
                 goto=END,
-                update={"messages": [AIMessage(content=f"Step Start Failure Agent: Unable to retrieve details for incident {incident_id}")]}
+                update={"messages": [AIMessage(content=error_msg)]}
             )
         
-        # Step 2: LLM Root Cause Analysis
-        print("\n🔍 Step 2: Performing root cause analysis...")
-        root_cause_analysis = analyzer.analyze_root_cause(incident_details)
+        # Step 2: Direct incident analysis and TSG matching (combined root cause analysis and TSG matching)
+        print("\n🤖 Step 2: AI directly analyzing incident and matching TSG...")
+        tsg_result = analyzer.analyze_incident_and_match_tsg(incident_details)
         
-        # Step 3: TSG Rule Matching
-        print("\n⚡ Step 3: Matching against TSG rules...")
-        tsg_result = analyzer.match_tsg_rules(root_cause_analysis)
-        
-        # Step 4: Generate Final Report
-        print("\n📄 Step 4: Generating final report...")
-        final_report = analyzer.generate_final_report(incident_details, root_cause_analysis, tsg_result)
+        # Step 3: Generate Final Report
+        print("\n📄 Step 3: Generating final report...")
+        final_report = analyzer.generate_final_report(incident_details, tsg_result)
         
         print("\n✅ Step Start Failure analysis completed!")
         
@@ -237,8 +368,9 @@ def step_start_failure_agent(state: MessagesState) -> Command[Literal[END]]:
         
     except Exception as e:
         print(f"❌ Step Start Failure Agent error: {e}")
+        error_msg = f"Step Start Failure Agent: Analysis failed - {str(e)}"
         return Command(
             goto=END,
-            update={"messages": [AIMessage(content=f"Step Start Failure Agent: Analysis failed - {str(e)}")]}
+            update={"messages": [AIMessage(content=error_msg)]}
         )
     

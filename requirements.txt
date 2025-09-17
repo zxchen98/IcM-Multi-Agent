@@ -183,3 +183,4 @@ wrapt==1.17.2
 xmltodict==0.14.2
 xxhash==3.5.0
 zstandard==0.23.0
+hnswlib==0.7.0

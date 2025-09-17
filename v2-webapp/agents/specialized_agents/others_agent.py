@@ -12,6 +12,7 @@ from pydantic import BaseModel
 # Import tools
 from tools.kusto_query_tool import kusto_tool
 from tools.find_similar_tickets_tool import find_similar_tickets
+from tools.tsg_vector_store_tool import search_tsg_for_ticket
 
 # Import streaming callbacks
 from streaming.callbacks import get_current_callbacks
@@ -184,9 +185,26 @@ async def others_agent(state: MessagesState) -> Command[Literal["__end__"]]:
     summary = incident_details.get('Summary', '')  # Use uppercase field name
     incident_description = f"{title} {summary}".strip()
     
-    print(f"🔍 Others Agent: Searching for similar tickets...")
+    print(f"🔍 Others Agent: Searching for TSGs...")
     print(f"📝 Incident Description: {incident_description}")
     
+    # if callbacks:
+    # await callbacks.on_agent_message("Others Agent", f"🔍 Searching for TSGs...")
+
+    # # Also search TSG vector store for relevant solutions
+    # print(f"🔍 Others Agent: Searching TSG vector store...")
+    # tsg_result = None
+    # try:
+    #     tsg_result = await search_tsg_for_ticket(title, summary)
+    #     if tsg_result:
+    #         similarity_percent = tsg_result.get('similarity', 0) * 100
+    #         print(f"✅ Others Agent: Found TSG match with {similarity_percent:.1f}% confidence")
+    #     else:
+    #         print("📝 Others Agent: No relevant TSGs found")
+    # except Exception as e:
+    #     print(f"⚠️ Others Agent: TSG search failed: {e}")
+    #     tsg_result = None
+
     if callbacks:
         await callbacks.on_agent_message("Others Agent", f"🔍 Searching for similar tickets...")
     
@@ -235,13 +253,14 @@ async def others_agent(state: MessagesState) -> Command[Literal["__end__"]]:
         )
 
 
-def generate_others_report(incident_details: Dict[str, Any], similar_tickets: List) -> str:
+def generate_others_report(incident_details: Dict[str, Any], similar_tickets: List, tsg_result: Dict = None) -> str:
     """
-    Generate comprehensive report with similar tickets analysis
+    Generate comprehensive report with similar tickets analysis and TSG information
     
     Args:
         incident_details: Original incident data
         similar_tickets: List of similar tickets found
+        tsg_result: TSG search result (optional)
         
     Returns:
         str: Formatted report
@@ -254,6 +273,29 @@ def generate_others_report(incident_details: Dict[str, Any], similar_tickets: Li
 - Incident ID: {incident_details.get('IncidentId', 'Unknown')}
 - Title: {incident_details.get('Title', 'Unknown')}
 - Summary: {incident_details.get('Summary', 'No summary available')}
+
+"""
+    
+    # Add TSG information if available
+    if tsg_result:
+        similarity_percent = tsg_result.get('similarity', 0) * 100
+        report += f"""
+📚 **TSG KNOWLEDGE BASE MATCH:**
+- **Best Match:** {tsg_result.get('title', 'Unknown TSG')}
+- **Similarity Score:** {similarity_percent:.1f}%
+- **TSG Path:** {tsg_result.get('path', 'Unknown path')}
+
+📖 **TSG Overview:**
+{tsg_result.get('overview', 'No overview available')}
+
+💡 **TSG Recommended Solution:**
+{tsg_result.get('solution', 'No solution content available')}
+
+"""
+    else:
+        report += """
+📚 **TSG KNOWLEDGE BASE:**
+No relevant TSG documents found for this incident.
 
 """
     

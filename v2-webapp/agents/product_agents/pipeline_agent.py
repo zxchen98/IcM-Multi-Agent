@@ -8,8 +8,9 @@ from langgraph.graph import StateGraph, MessagesState, START, END
 from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel
 
-# Import Kusto query tool
+# Import Kusto query tool and TSG vector store
 from tools.kusto_query_tool import kusto_tool
+from tools.tsg_vector_store_tool import search_tsg_for_ticket
 
 # Import streaming callbacks
 from streaming.callbacks import get_current_callbacks
@@ -24,6 +25,52 @@ model = AzureChatOpenAI(
     api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
     azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
 )
+
+def generate_tsg_report(incident_details: dict, best_tsg: dict) -> str:
+    """
+    Generate comprehensive TSG report from incident details and matched TSG
+    
+    Args:
+        incident_details: Incident information from Kusto
+        best_tsg: Best matching TSG from vector search
+        
+    Returns:
+        str: Formatted TSG report
+    """
+    similarity_percent = best_tsg.get('similarity', 0) * 100
+    
+    report = f"""
+🎫 **PIPELINE INCIDENT TSG ANALYSIS REPORT**
+================================================
+
+📋 **Incident Information:**
+- Incident ID: {incident_details.get('IncidentId', 'Unknown')}
+- Title: {incident_details.get('Title', 'Unknown')}
+- Severity: {incident_details.get('Severity', 'Unknown')}
+- Summary: {incident_details.get('Summary', 'No summary available')[:300]}...
+
+🔍 **TSG Vector Search Results:**
+- **Best Match:** {best_tsg.get('title', 'Unknown TSG')}
+- **Similarity Score:** {similarity_percent:.1f}%
+- **TSG Path:** {best_tsg.get('path', 'Unknown path')}
+
+📖 **TSG Overview:**
+{best_tsg.get('overview', 'No overview available')}
+
+💡 **Recommended Solution:**
+{best_tsg.get('solution', 'No solution content available')}
+
+🎯 **Next Steps:**
+Based on the TSG match with {similarity_percent:.1f}% confidence:
+- Review the recommended solution above
+- Follow the TSG procedures if similarity > 70%
+- Consider manual investigation if similarity < 70%
+- Escalate to appropriate team if needed
+
+================================================
+"""
+    
+    return report
 
 async def pipeline_supervisor_with_streaming(state: MessagesState) -> Command[Literal["step_start_failure_agent", "others_agent", END]]:
     """
@@ -50,7 +97,36 @@ async def pipeline_supervisor_with_streaming(state: MessagesState) -> Command[Li
     print("=" * 60)
     print(f"🔧 Pipeline Agent: Processing incident {incident_id}")
     
-    # Route based on Kusto query results
+    # First check TSG vector store for immediate solutions
+    print("🔍 Pipeline Agent: Checking TSG vector store...")
+    if incident_id:
+        # Get incident details for TSG search
+        incident_details = await kusto_tool.query_incident_details(incident_id)
+        if incident_details and incident_details.get('Title') != 'Unknown':
+            # Search TSG vector store
+            title = incident_details.get('Title', '')
+            summary = incident_details.get('Summary', '')
+            best_tsg = await search_tsg_for_ticket(title, summary)
+            
+            if best_tsg and best_tsg.get('similarity', 0) > 0.7:  # High confidence TSG match
+                print("✅ Pipeline Agent: Found high-confidence TSG match, returning TSG report")
+                tsg_report = generate_tsg_report(incident_details, best_tsg)
+                
+                if callbacks:
+                    await callbacks.on_agent_end("Pipeline Agent", "TSG solution found and provided")
+                
+                return Command(
+                    goto=END,
+                    update={"messages": [AIMessage(content=tsg_report)]}
+                )
+            elif best_tsg:
+                print(f"📝 Pipeline Agent: Found TSG match but low confidence ({best_tsg.get('similarity', 0)*100:.1f}%), routing to specialized agent")
+            else:
+                print("📝 Pipeline Agent: No relevant TSGs found, routing to specialized agent")
+        else:
+            print("❌ Pipeline Agent: Unable to get incident details for TSG search")
+    
+    # Route based on Kusto query results if no high-confidence TSG match
     if incident_id:
         specialized_agent = await route_to_specialized_agent(incident_id)
 

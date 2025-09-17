@@ -81,9 +81,9 @@ def determine_product_from_messages(state: MessagesState) -> str:
 def simple_analyze_ticket(incident_details: Dict[str, Any]) -> SimpleTicketAnalysis:
     # Format incident details for analysis
     formatted_content = f"""
-    Incident ID: {incident_details.get('incident_id', 'Unknown')}
-    Title: {incident_details.get('title', 'Unknown')}
-    Summary: {incident_details.get('summary', 'No summary available')}
+    Incident ID: {incident_details.get('IncidentId', 'Unknown')}
+    Title: {incident_details.get('Title', 'Unknown')}
+    Summary: {incident_details.get('Summary', 'No summary available')}
     """
     
     analysis_prompt = f"""
@@ -154,7 +154,6 @@ def others_agent(state: MessagesState) -> Command[Literal[END]]:
     
     # Get incident details from Kusto
     incident_details = kusto_tool.query_incident_details(incident_id)
-    
     if not incident_details or incident_details.get('title') == 'Unknown':
         print("❌ Others Agent: Unable to retrieve incident details")
         return Command(

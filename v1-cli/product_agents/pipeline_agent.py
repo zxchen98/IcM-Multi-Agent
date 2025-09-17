@@ -1,26 +1,89 @@
 import os
 import re
+import json
 from typing import Literal
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
+from langchain_openai.embeddings import AzureOpenAIEmbeddings
 from langgraph.types import Command
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel
 
-# Import Kusto query tool
+# Import Kusto query tool and TSG vector store tools
 from tools.kusto_query_tool import kusto_tool
+from tools.tsg_vector_store_tool import search_tsg_for_ticket
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Azure OpenAI model
-model = AzureChatOpenAI(
+chat_model = AzureChatOpenAI(
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
     api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
     azure_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
 )
+
+def generate_tsg_report(incident_details: dict, best_tsg: dict) -> str:
+    """
+    Generate TSG analysis report based on search results
+    
+    Args:
+        incident_details: Original incident data
+        best_tsg: Best TSG result from search_tsg_for_ticket
+        
+    Returns:
+        str: Formatted TSG report
+    """
+    incident_id = incident_details.get('IncidentId', 'Unknown')
+    title = incident_details.get('Title', 'Unknown')
+    summary = incident_details.get('Summary', 'No summary available')
+    
+    report = f"""
+🎫 **PIPELINE INCIDENT TSG ANALYSIS**
+================================================
+
+📋 **Incident Information:**
+- Incident ID: {incident_id}
+- Title: {title}
+- Summary: {summary}
+
+"""
+    
+    if best_tsg:
+        report += f"✅ **FOUND THE CLOSEST MATCHING TROUBLESHOOTING GUIDE:**\n\n"
+
+        similarity_percent = best_tsg.get('similarity', 0) * 100
+        report += f"**{best_tsg.get('title', 'Unknown TSG')}** (Similarity: {similarity_percent:.1f}%)\n"
+        report += f"   📁 **Path:** {best_tsg.get('path', 'N/A')}\n"
+        report += f"   🆔 **TSG ID:** {best_tsg.get('id', 'N/A')}\n"
+            
+        solution = best_tsg.get('solution', '').strip()
+        if solution:
+            report += f"   \n   **📋 Solution:**\n```\n{solution}\n```\n\n"
+        else:
+            report += f"   ⚠️ **No solution content found**\n\n"
+        
+        report += "================================================"
+    else:
+        report += """❌ **NO RELEVANT TSG FOUND:**
+
+💡 **RECOMMENDED ACTIONS:**
+
+1. **Manual Investigation:**
+   - No specific TSG available for this incident type
+   - Proceed with general troubleshooting approaches
+   - Review system logs and monitoring data
+
+2. **Escalation:**
+   - Route to specialized agents for detailed analysis
+   - Consider creating new TSG if this becomes a recurring issue
+
+================================================
+"""
+    
+    return report
 
 def pipeline_supervisor(state: MessagesState) -> Command[Literal["step_start_failure_agent", "others_agent", END]]:
     """
@@ -40,7 +103,31 @@ def pipeline_supervisor(state: MessagesState) -> Command[Literal["step_start_fai
     print("\n\n")
     print("=" * 60)
     print(f"🔧 Pipeline Supervisor: Processing incident {incident_id}")
+
     
+    # print("🔍 Pipeline Supervisor: Checking TSG vector store...")
+    # if incident_id:
+    #     # Get incident details for TSG search
+    #     incident_details = kusto_tool.query_incident_details(incident_id)
+    #     if incident_details and incident_details.get('Title') != 'Unknown':
+    #         # Search TSG vector store
+    #         title = incident_details.get('Title', '')
+    #         summary = incident_details.get('Summary', '')
+    #         best_tsg = search_tsg_for_ticket(title, summary)
+            
+    #         if best_tsg:
+    #             print("✅ Pipeline Supervisor: Found relevant TSGs, returning TSG report")
+    #             tsg_report = generate_tsg_report(incident_details, best_tsg)
+    #             return Command(
+    #                 goto=END,
+    #                 update={"messages": [AIMessage(content=tsg_report)]}
+    #             )
+    #         else:
+    #             print("📝 Pipeline Supervisor: No relevant TSGs found, routing to others_agent")
+    #     else:
+    #         print("❌ Pipeline Supervisor: Unable to get incident details, routing to others_agent")
+    
+
     # Route based on Kusto query results
     if incident_id:
         specialized_agent = route_to_specialized_agent(incident_id)
@@ -51,12 +138,12 @@ def pipeline_supervisor(state: MessagesState) -> Command[Literal["step_start_fai
                 goto=specialized_agent,
                 update={"messages": [AIMessage(content=f"Pipeline Supervisor: Routing to {specialized_agent}. Incident ID: {incident_id}")]}
             )
+    print("📝 Pipeline Supervisor: Routing to others_agent for general analysis")
     
-    # If no specialized agent matched, route to others_agent
-    print("📝 Pipeline Supervisor: No specialized agent matched, routing to others_agent")
+    # If no TSG found or incident details unavailable, route to others_agent
     return Command(
         goto="others_agent",
-        update={"messages": [AIMessage(content=f"Pipeline Supervisor: Routing to others_agent for general analysis. Incident ID: {incident_id}")]}
+        update={"messages": [AIMessage(content=f"Pipeline Supervisor: No TSG found, routing to others_agent for general analysis. Incident ID: {incident_id}")]}
     )
 
 def route_to_specialized_agent(incident_id: str) -> str:
@@ -97,7 +184,6 @@ def route_to_specialized_agent(incident_id: str) -> str:
     
     print("❌ No specialized agent pattern matched")
     return "others_agent"
-
 
 
 def create_pipeline_team_graph():

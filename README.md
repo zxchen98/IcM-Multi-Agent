@@ -179,7 +179,7 @@ graph TB
     subgraph "Data Sources"
         ACI[📦 Azure Container Instances<br/>Production Containers]
         KDB[🗂️ Kusto Database<br/>IcM Incident Data]
-        AOAI[🤖 Azure OpenAI<br/>GPT-4 Analysis]
+        VS[🤖 Vector Store<br/>TSGs]
     end
     
     %% User Flow - Direct routing
@@ -201,7 +201,7 @@ graph TB
     %% Data Access
     ACT -->|Manage| ACI
     KQT -->|Query| KDB
-    LAT -->|Analyze| AOAI
+    LAT -->|Analyze| VS
     
     %% Streaming Response
     RA -.->|Stream Progress| WSS
@@ -218,7 +218,7 @@ graph TB
     style PFA fill:#f0f0f0,stroke-dasharray: 5 5
     style ACI fill:#fff3e0
     style KDB fill:#e1f5fe
-    style AOAI fill:#fce4ec
+    style VS fill:#fce4ec
 ```
 
 ### Key Features of v2 Architecture
