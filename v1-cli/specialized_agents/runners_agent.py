@@ -49,7 +49,7 @@ class RunnerAgent:
     def __init__(self):
         self.model = model
     
-    def truncate_text(self, text: str, max_chars: int = 2000) -> str:
+    def truncate_text(self, text: str, max_chars: int = 5000) -> str:
         """
         Truncate text to avoid token limits, keeping the most recent/relevant part
         

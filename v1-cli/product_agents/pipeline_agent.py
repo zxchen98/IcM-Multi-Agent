@@ -146,7 +146,7 @@ def pipeline_supervisor(state: MessagesState) -> Command[Literal["step_start_fai
         update={"messages": [AIMessage(content=f"Pipeline Supervisor: No TSG found, routing to others_agent for general analysis. Incident ID: {incident_id}")]}
     )
 
-def route_to_specialized_agent(incident_id: str) -> str:
+def f(incident_id: str) -> str:
     """
     Query Kusto and route to appropriate specialized agent based on incident characteristics
     

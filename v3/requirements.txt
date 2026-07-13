@@ -1,0 +1,10 @@
+# v3 - LangGraph skeleton with MCP-backed tools and LLM routing
+# Pin to reasonably recent versions; the code uses:
+#   - create_react_agent(model, tools=..., prompt=...)   (langgraph.prebuilt)
+#   - MultiServerMCPClient(...).get_tools(server_name=...) (langchain-mcp-adapters)
+langgraph>=0.3.0
+langchain-openai>=0.2.0
+langchain-core>=0.3.0
+langchain-mcp-adapters>=0.1.0
+mcp>=1.2.0
+python-dotenv>=1.0.0

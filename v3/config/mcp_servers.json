@@ -1,0 +1,12 @@
+{
+  "kusto": {
+    "command": "python",
+    "args": ["../path/to/your/kusto_mcp_server.py"],
+    "transport": "stdio"
+  },
+
+  "icm": {
+    "url": "${ICM_MCP_URL}",
+    "transport": "streamable_http"
+  }
+}
