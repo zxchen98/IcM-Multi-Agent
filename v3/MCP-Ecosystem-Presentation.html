@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyTeamBrain MCP Ecosystem — Full Server &amp; Tool Reference</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --card: #1c2129;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #d2a8ff;
+    --accent4: #f78166;
+    --accent5: #ffa657;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  .deck { width: 100%; max-width: 1200px; margin: 0 auto; }
+
+  .slide {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 60px 80px;
+    border-bottom: 1px solid var(--border);
+  }
+  .slide:last-child { border-bottom: none; }
+
+  h1 { font-size: 3rem; font-weight: 700; margin-bottom: 0.3em; }
+  h2 { font-size: 2.2rem; font-weight: 600; margin-bottom: 0.6em; color: var(--accent); }
+  h3 { font-size: 1.4rem; font-weight: 500; color: var(--accent3); margin-bottom: 0.5em; margin-top: 1em; }
+  p, li { font-size: 1.15rem; line-height: 1.7; color: var(--text); }
+  .subtitle { font-size: 1.35rem; color: var(--muted); font-style: italic; margin-bottom: 1.2em; }
+  .small { font-size: 0.95rem; color: var(--muted); }
+
+  ul { list-style: none; padding-left: 0; }
+  ul li { padding: 0.25em 0; padding-left: 1.4em; position: relative; }
+  ul li::before { content: '▸'; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
+
+  ol { padding-left: 1.6em; }
+  ol li { padding: 0.25em 0; }
+
+  blockquote {
+    border-left: 4px solid var(--accent);
+    padding: 12px 20px;
+    margin: 1em 0;
+    background: var(--card);
+    border-radius: 6px;
+    font-style: italic;
+    color: var(--muted);
+  }
+
+  code {
+    background: var(--card);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.95em;
+    color: var(--accent3);
+  }
+
+  pre {
+    background: var(--card);
+    padding: 18px 24px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.9em;
+    line-height: 1.6;
+    margin: 1em 0;
+    color: var(--text);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 1rem;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  tr:hover { background: var(--surface); }
+  td code { font-size: 0.85em; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 1em 0; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+  .card h3 { margin-top: 0; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge-read { background: rgba(63,185,80,0.15); color: var(--accent2); }
+  .badge-write { background: rgba(247,129,102,0.15); color: var(--accent4); }
+  .badge-core { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid var(--accent); }
+  .badge-optional { background: rgba(255,166,87,0.15); color: var(--accent5); border: 1px solid var(--accent5); }
+  .badge-http { background: rgba(210,168,255,0.15); color: var(--accent3); }
+  .badge-stdio { background: rgba(88,166,255,0.15); color: var(--accent); }
+  .badge-safe { background: rgba(63,185,80,0.15); color: var(--accent2); border: 1px solid var(--accent2); }
+
+  .stats { display: flex; gap: 24px; flex-wrap: wrap; margin: 1.2em 0; }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 28px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .stat-num { font-size: 2.4rem; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 0.9rem; color: var(--muted); margin-top: 4px; }
+
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 1.5em 0; }
+  .flow-step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 22px;
+    text-align: center;
+    font-size: 0.95rem;
+  }
+  .flow-arrow { color: var(--accent); font-size: 1.6rem; padding: 0 8px; }
+
+  .highlight { color: var(--accent); font-weight: 600; }
+  .highlight2 { color: var(--accent2); font-weight: 600; }
+  .highlight3 { color: var(--accent3); font-weight: 600; }
+  .highlight4 { color: var(--accent4); font-weight: 600; }
+  .highlight5 { color: var(--accent5); font-weight: 600; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+
+  .toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin: 1em 0; }
+  .toc a {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 1rem;
+  }
+  .toc a:hover { border-color: var(--accent); color: var(--accent); }
+  .toc a .num { color: var(--muted); margin-right: 8px; }
+
+  @media (max-width: 768px) {
+    .slide { padding: 30px 24px; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.6rem; }
+    .stats { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 1: TITLE -->
+<section class="slide">
+  <h1>MyTeamBrain MCP Ecosystem</h1>
+  <p class="subtitle">Every Model Context Protocol server, function, and tool available to the brain — core and optional</p>
+  <p>This deck catalogs all <span class="highlight">9 MCP servers</span> wired into (or available to) this workspace: 8 core servers configured in <code>.vscode/mcp.json</code> that power daily build-triage, incident, ADO, Teams, and mail workflows, plus 1 optional, on-demand server (Azure MCP) for Azure resource administration and IaC work.</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">8</div><div class="stat-label">Core MCP Servers</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--accent5)">1</div><div class="stat-label">Optional MCP Server</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--accent2)">~256</div><div class="stat-label">Total Tools/Functions</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--accent3)">4</div><div class="stat-label">Read-Only Servers</div></div>
+  </div>
+  <p class="small">Mingsheng Yang (Young Yang) &bull; WDG Build Services &bull; July 2026</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 2: TOC -->
+<section class="slide">
+  <h2>What's in This Deck</h2>
+  <p class="subtitle">Jump to any server</p>
+  <div class="toc">
+    <a href="#arch"><span class="num">01</span>Architecture &amp; Config</a>
+    <a href="#summary"><span class="num">02</span>Core Servers at a Glance</a>
+    <a href="#ado"><span class="num">03</span>ADO (Azure DevOps) MCP — 68 tools</a>
+    <a href="#esbuild"><span class="num">04</span>ES Build Data MCP — 21 tools</a>
+    <a href="#icm"><span class="num">05</span>ICM MCP — 21 tools</a>
+    <a href="#kusto"><span class="num">06</span>Kusto MCP — 7 tools</a>
+    <a href="#playwright"><span class="num">07</span>Playwright MCP — 22 tools</a>
+    <a href="#enghub"><span class="num">08</span>EngineeringHub MCP — 6 tools</a>
+    <a href="#teams"><span class="num">09</span>Work IQ Teams MCP — 29 tools</a>
+    <a href="#mail"><span class="num">10</span>Work IQ Mail MCP — 21 tools</a>
+    <a href="#optional"><span class="num">11</span>Optional: Azure MCP Server — 61 tools</a>
+    <a href="#safety"><span class="num">12</span>Safety &amp; Read/Write Matrix</a>
+    <a href="#decision"><span class="num">13</span>Decision Tree</a>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 3: ARCHITECTURE -->
+<section class="slide" id="arch">
+  <h2>Architecture &amp; Configuration</h2>
+  <p class="subtitle">Copilot Agent Mode &rarr; <code>.vscode/mcp.json</code> &rarr; 8 core servers, always connected</p>
+
+  <div class="flow">
+    <div class="flow-step"><strong>Copilot Agent</strong><br><span class="small">VS Code chat</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step"><strong>.vscode/mcp.json</strong><br><span class="small">server registry</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step"><strong>stdio / http servers</strong><br><span class="small">8 core</span></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step"><strong>Backends</strong><br><span class="small">ADO, ICM, ES Build, Graph, ADX</span></div>
+  </div>
+
+  <h3>Core Server Registry (<code>.vscode/mcp.json</code>)</h3>
+  <table>
+    <tr><th>Server Key</th><th>Type</th><th>Transport</th></tr>
+    <tr><td><code>playwright</code></td><td><span class="badge badge-stdio">stdio</span></td><td><code>npx @playwright/mcp</code> (Edge)</td></tr>
+    <tr><td><code>enghub</code></td><td><span class="badge badge-stdio">stdio</span></td><td><code>enghub-mcp start</code></td></tr>
+    <tr><td><code>workiq-teams</code></td><td><span class="badge badge-http">http</span></td><td>Agent 365 gateway (Entra ID)</td></tr>
+    <tr><td><code>workiq-mail</code></td><td><span class="badge badge-http">http</span></td><td>Agent 365 gateway (Entra ID)</td></tr>
+    <tr><td><code>ado</code></td><td><span class="badge badge-stdio">stdio</span></td><td><code>npx @azure-devops/mcp</code> (azcli auth)</td></tr>
+    <tr><td><code>es-build-data-mcp-prod</code></td><td><span class="badge badge-http">http</span></td><td>Azure Web App</td></tr>
+    <tr><td><code>icm-mcp-server</code></td><td><span class="badge badge-http">http</span></td><td>Azure API Management</td></tr>
+    <tr><td><code>kusto</code></td><td><span class="badge badge-stdio">stdio</span></td><td>local Python script (az login)</td></tr>
+  </table>
+  <p class="small">The optional Azure MCP Server is <strong>not</strong> declared in this workspace's <code>mcp.json</code> — it is a separately-installed, globally-available server surfaced via <code>tool_search</code> only when Azure resource/IaC tasks come up.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 4: SUMMARY TABLE -->
+<section class="slide" id="summary">
+  <h2>Core Servers at a Glance</h2>
+  <p class="subtitle">8 always-on servers &bull; ~195 tools &bull; used for daily build triage, incidents, and comms</p>
+  <table>
+    <tr><th>MCP Server</th><th>Tools</th><th>Access</th><th>Key Capability</th></tr>
+    <tr><td>ADO (Azure DevOps)</td><td>68</td><td><span class="badge badge-read">Read</span> <span class="badge badge-write">Write</span></td><td>Work items, repos, PRs, pipelines, wikis, test plans, iterations</td></tr>
+    <tr><td>ES Build Data</td><td>21</td><td><span class="badge badge-read">Read-only</span></td><td>Windows OS build telemetry, failures, ETA, performance</td></tr>
+    <tr><td>ICM</td><td>21</td><td><span class="badge badge-read">Read-only</span></td><td>Incident details, impact, teams, contacts, similar incidents</td></tr>
+    <tr><td>Playwright</td><td>22</td><td><span class="badge badge-read">Read</span> <span class="badge badge-write">Write</span></td><td>Browser automation, web scraping, page interaction</td></tr>
+    <tr><td>EngineeringHub</td><td>6</td><td><span class="badge badge-read">Read-only</span></td><td>Search eng.ms docs/TSGs, browse ServiceTree, fetch pages</td></tr>
+    <tr><td>Kusto (local)</td><td>7</td><td><span class="badge badge-read">Read-only</span></td><td>Free-form KQL, RI calendar, build notes, machine diagnostics</td></tr>
+    <tr><td>Work IQ Teams</td><td>29</td><td><span class="badge badge-read">Read</span> <span class="badge badge-write">Write</span></td><td>Teams chats, channels, messages, members via Agent 365</td></tr>
+    <tr><td>Work IQ Mail</td><td>21</td><td><span class="badge badge-read">Read</span> <span class="badge badge-write">Write</span></td><td>Outlook search, read, compose, send, reply, attachments</td></tr>
+  </table>
+  <p><span class="badge badge-optional">OPTIONAL</span> &nbsp; Azure MCP Server — 61 tool groups covering full Azure resource management (see slide 11).</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 5: ADO MCP -->
+<section class="slide" id="ado">
+  <h2>1 &middot; ADO (Azure DevOps) MCP</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 68 tools &bull; Org <code>microsoft</code> &bull; auth <code>azcli</code></p>
+  <table>
+    <tr><th>Category</th><th># Tools</th><th>Read</th><th>Write</th><th>Highlights</th></tr>
+    <tr><td>Core / Org</td><td>3</td><td>3</td><td>0</td><td>List projects, teams, resolve identities</td></tr>
+    <tr><td>Advanced Security</td><td>2</td><td>2</td><td>0</td><td>Repo security alerts &amp; details</td></tr>
+    <tr><td>Pipelines / Builds</td><td>12</td><td>9</td><td>3</td><td>Get builds/status/logs; create/run pipeline; update stage</td></tr>
+    <tr><td>Repos / Branches</td><td>8</td><td>7</td><td>1</td><td>List repos/branches, search commits, create branch</td></tr>
+    <tr><td>Pull Requests</td><td>9</td><td>4</td><td>5</td><td>List/get PRs; create PR, update, reviewers, threads, reply</td></tr>
+    <tr><td>Search</td><td>3</td><td>3</td><td>0</td><td>Code, wiki, work item search</td></tr>
+    <tr><td>Work Items</td><td>19</td><td>10</td><td>9</td><td>Get/query/batch; create, update, comment, link</td></tr>
+    <tr><td>Wiki</td><td>6</td><td>5</td><td>1</td><td>List/get pages; create-or-update page</td></tr>
+    <tr><td>Test Plans</td><td>9</td><td>4</td><td>5</td><td>Plans/suites/cases; create + update steps</td></tr>
+    <tr><td>Iterations / Capacity</td><td>7</td><td>4</td><td>3</td><td>List iterations/capacity; create, assign, update</td></tr>
+  </table>
+  <p class="small">Config gotcha: use <code>npx.cmd</code> (not <code>npx</code>) on Windows; hardcode org <code>microsoft</code> with explicit tenant to avoid resource-area discovery failures.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 6: ES BUILD DATA MCP -->
+<section class="slide" id="esbuild">
+  <h2>2 &middot; ES Build Data MCP</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 21 tools &bull; <span class="badge badge-safe">ALL READ-ONLY</span> &bull; Windows OS build telemetry</p>
+  <table>
+    <tr><th>Category</th><th># Tools</th><th>Examples</th></tr>
+    <tr><td>Build Status &amp; ETA</td><td>4</td><td><code>BuildStatus</code>, <code>BuildETA</code>, <code>BuildChunkReplicaStatus</code>, <code>GetOSBranches</code></td></tr>
+    <tr><td>Build Failures</td><td>4</td><td><code>BuildFailures</code>, <code>BuildFailuresBranchImpact</code>, <code>BuildFailuresTrend</code>, <code>BranchFailureHistory</code></td></tr>
+    <tr><td>Build Performance</td><td>8</td><td>Duration/task/machine summaries, branch-health performance, crit-path PiP data</td></tr>
+    <tr><td>Build Comparisons</td><td>5</td><td>Compare durations, platform durations, PiP durations, task durations, machine specs</td></tr>
+    <tr><td>RI Gate Testing</td><td>1</td><td><code>RIGateTestStatus</code></td></tr>
+  </table>
+  <h3>Key Identifiers</h3>
+  <ul>
+    <li><strong>BuildString</strong>: <code>branch.version.qfe.YYYYMMDD-HHMM</code> (starts with branch name)</li>
+    <li><strong>FQBN</strong>: <code>version.qfe.branch.YYMMDD-HHMM</code> (starts with version number)</li>
+    <li><strong>BuildGuid</strong>: GUID uniquely identifying a build</li>
+    <li><strong>ArchFlavor</strong>: e.g. <code>x86fre</code>, <code>chpefre</code>, <code>arm64fre</code></li>
+  </ul>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 7: ICM MCP -->
+<section class="slide" id="icm">
+  <h2>3 &middot; ICM MCP</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 21 tools &bull; <span class="badge badge-safe">ALL READ-ONLY</span> &bull; ⚠️ no write tools at all</p>
+  <div class="grid">
+    <div class="card">
+      <h3>Incident Details</h3>
+      <ul>
+        <li><code>get_incident_details_by_id</code></li>
+        <li><code>get_incident_context</code></li>
+        <li><code>get_ai_summary</code></li>
+        <li><code>get_incident_location</code></li>
+        <li><code>get_mitigation_hints</code></li>
+        <li><code>get_similar_incidents</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Impact &amp; Customers</h3>
+      <ul>
+        <li><code>get_incident_customer_impact</code></li>
+        <li><code>get_impacted_subscription_count</code></li>
+        <li><code>get_impacted_ace_customers</code></li>
+        <li><code>get_impacted_s500_customers</code></li>
+        <li><code>get_impacted_azure_priority0_customers</code></li>
+        <li><code>is_specific_customer_impacted</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Teams &amp; Contacts</h3>
+      <ul>
+        <li><code>get_teams_by_name</code> / <code>get_teams_by_public_id</code></li>
+        <li><code>get_team_by_id</code></li>
+        <li><code>get_on_call_schedule_by_team_id</code></li>
+        <li><code>get_contact_by_alias</code> / <code>get_contact_by_id</code></li>
+        <li><code>get_services_by_names</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Search &amp; Outage</h3>
+      <ul>
+        <li><code>search_incidents_by_owning_team_id</code></li>
+        <li><code>get_outage_high_priority_events</code></li>
+        <li><code>get_support_requests_crisit</code></li>
+        <li><code>get_impacted_services_regions_clouds</code></li>
+      </ul>
+    </div>
+  </div>
+  <blockquote>ICM MCP cannot update incidents, acknowledge, post discussion entries, or change severity. Use the documented portal/v2 API helper scripts (<code>Invoke-IcmAcknowledge.ps1</code>, <code>Update-IcmDiscussion.ps1</code>) for those write operations.</blockquote>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 8: KUSTO MCP -->
+<section class="slide" id="kusto">
+  <h2>4 &middot; Kusto MCP (local)</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 7 tools &bull; <span class="badge badge-safe">ALL READ-ONLY</span> &bull; stdio Python server &bull; <code>az login</code> auth</p>
+  <table>
+    <tr><th>Tool</th><th>Description</th></tr>
+    <tr><td><code>kusto_query</code></td><td>Free-form KQL against any cluster/database (default: ESBuildServices)</td></tr>
+    <tr><td><code>kusto_build_failures_raw</code></td><td>Search <code>BuildFailuresData</code> by raw <code>MessageString</code></td></tr>
+    <tr><td><code>kusto_ri_calendar</code></td><td>RI'ing branches for a date (L1/L2)</td></tr>
+    <tr><td><code>kusto_build_notes</code></td><td>BuildNotes — restarts, Defib/ARF recovery, ICMs</td></tr>
+    <tr><td><code>analyze_BuildExeWarningError</code></td><td>Build exe warnings/errors from WDGES cluster</td></tr>
+    <tr><td><code>query_CriticalEventLogEvents</code></td><td>Machine crashes/BSODs from BFBuildAnalytics</td></tr>
+    <tr><td><code>query_CommandReleasePush</code></td><td>Push/release status — hung pushes, slow servers, errors</td></tr>
+  </table>
+  <p class="small">Safety: management commands (<code>.set</code>, <code>.drop</code>, <code>.alter</code>) are blocked server-side; hard cap 2,000 rows/query.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 9: PLAYWRIGHT MCP -->
+<section class="slide" id="playwright">
+  <h2>5 &middot; Playwright MCP</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 22 tools &bull; browser automation &bull; Microsoft Edge</p>
+  <table>
+    <tr><th>Category</th><th>Tools</th></tr>
+    <tr><td>Navigation <span class="badge badge-write">Write</span></td><td><code>browser_navigate</code>, <code>browser_navigate_back</code>, <code>browser_tabs</code>, <code>browser_close</code>, <code>browser_resize</code></td></tr>
+    <tr><td>Inspection <span class="badge badge-read">Read</span></td><td><code>browser_snapshot</code>, <code>browser_take_screenshot</code>, <code>browser_console_messages</code>, <code>browser_network_requests</code>, <code>browser_wait_for</code></td></tr>
+    <tr><td>Interaction <span class="badge badge-write">Write</span></td><td><code>browser_click</code>, <code>browser_type</code>, <code>browser_fill_form</code>, <code>browser_select_option</code>, <code>browser_hover</code>, <code>browser_drag</code>, <code>browser_press_key</code>, <code>browser_file_upload</code>, <code>browser_handle_dialog</code></td></tr>
+    <tr><td>Scripting <span class="badge badge-write">Write</span></td><td><code>browser_evaluate</code>, <code>browser_run_code_unsafe</code></td></tr>
+  </table>
+  <p class="small">Rule: never use for SSO/auth-required sites; prefer real MCP servers for those (e.g. ADO, ICM, ES Build Data) and reserve Playwright for BuildSVC-style UI automation.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 10: ENGHUB MCP -->
+<section class="slide" id="enghub">
+  <h2>6 &middot; EngineeringHub MCP</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 6 tools &bull; <span class="badge badge-safe">ALL READ-ONLY</span> &bull; docs, TSGs, ServiceTree</p>
+  <table>
+    <tr><th>Tool</th><th>Description</th></tr>
+    <tr><td><code>search</code></td><td>Search EngineeringHub for docs, TSGs, service info</td></tr>
+    <tr><td><code>fetch</code></td><td>Fetch a specific EngineeringHub page by URL</td></tr>
+    <tr><td><code>get_node_tree</code></td><td>Node tree structure for a service</td></tr>
+    <tr><td><code>get_service_nodes</code></td><td>Service nodes from ServiceTree</td></tr>
+    <tr><td><code>get_source_link</code></td><td>Source link for a page</td></tr>
+    <tr><td><code>resolve_service</code></td><td>Resolve a service name/ID in ServiceTree</td></tr>
+  </table>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 11: WORK IQ TEAMS MCP -->
+<section class="slide" id="teams">
+  <h2>7 &middot; Work IQ Teams MCP</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 29 tools &bull; Agent 365 gateway &bull; Entra ID auth</p>
+  <table>
+    <tr><th>Category</th><th>Tools</th></tr>
+    <tr><td>Chats</td><td>ListChats, GetChat, CreateChat, DeleteChat, AddChatMember, UpdateChat, SendMessageToChat, GetChatMessage, ListChatMessages, ListChatMembers, UpdateChatMessage, DeleteChatMessage, SendMessageToUser, SendMessageToSelf, SendFileToChat, SendFileToUser</td></tr>
+    <tr><td>Teams / Channels</td><td>ListTeams, GetTeam, ListTeamMembers, ListChannels, GetChannel, ListChannelMembers, ListChannelMessages, ListChannelMessageReplies, ReplyToChannelMessage, SendMessageToChannel, SendFileToChannel, CreateChannel, AddChannelMember, UpdateChannel, UpdateChannelMember, ListChannelFiles</td></tr>
+    <tr><td>Search / Presence</td><td>SearchTeamsMessages, SearchTeamMessagesQueryParameters, GetUserPresence, GetRichMessageFormats</td></tr>
+  </table>
+  <blockquote>Safety: never send messages, delete chats, or add/remove members without explicit user confirmation.</blockquote>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 12: WORK IQ MAIL MCP -->
+<section class="slide" id="mail">
+  <h2>8 &middot; Work IQ Mail MCP</h2>
+  <p class="subtitle"><span class="badge badge-core">CORE</span> 21 tools &bull; Agent 365 gateway &bull; Microsoft Graph Mail</p>
+  <table>
+    <tr><th>Category</th><th>Tools</th></tr>
+    <tr><td>Read</td><td><code>GetMessage</code>, <code>SearchMessages</code>, <code>SearchMessagesQueryParameters</code>, <code>GetAttachments</code>, <code>DownloadAttachment</code></td></tr>
+    <tr><td>Compose &amp; Send</td><td><code>CreateDraftMessage</code>, <code>UpdateDraft</code>, <code>SendDraftMessage</code>, <code>SendEmailWithAttachments</code></td></tr>
+    <tr><td>Reply / Forward</td><td><code>ReplyToMessage</code>, <code>ReplyWithFullThread</code>, <code>ReplyAllToMessage</code>, <code>ReplyAllWithFullThread</code>, <code>ForwardMessage</code>, <code>ForwardMessageWithFullThread</code></td></tr>
+    <tr><td>Manage</td><td><code>UpdateMessage</code>, <code>DeleteMessage</code>, <code>FlagEmail</code>, <code>DeleteAttachment</code></td></tr>
+    <tr><td>Attachments</td><td><code>AddDraftAttachments</code>, <code>UploadAttachment</code>, <code>UploadLargeAttachment</code></td></tr>
+  </table>
+  <blockquote>Safety: never send, reply, forward, or delete emails without explicit user confirmation. Read/search is always safe.</blockquote>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 13: OPTIONAL AZURE MCP -->
+<section class="slide" id="optional">
+  <h2>9 &middot; Optional: Azure MCP Server</h2>
+  <p class="subtitle"><span class="badge badge-optional">OPTIONAL</span> ~61 tool groups &bull; not in <code>mcp.json</code> &bull; loaded on-demand via <code>tool_search</code></p>
+  <p>This server is available globally but is <strong>not part of the daily build-triage core set</strong>. It surfaces only when a task explicitly involves Azure resource management, cost/IaC review, or Azure app deployment.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>Compute &amp; Containers</h3>
+      <ul>
+        <li><code>compute</code>, <code>aks</code>, <code>containerapps</code>, <code>appservice</code>, <code>functionapp</code>, <code>functions</code>, <code>acr</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Data &amp; Storage</h3>
+      <ul>
+        <li><code>storage</code>, <code>storagesync</code>, <code>cosmos</code>, <code>sql</code>, <code>mysql</code>, <code>postgres</code>, <code>redis</code>, <code>fileshares</code>, <code>managedlustre</code>, <code>kusto</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Security &amp; Identity</h3>
+      <ul>
+        <li><code>keyvault</code>, <code>role</code>, <code>policy</code>, <code>confidentialledger</code>, <code>advisor</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Monitoring &amp; Observability</h3>
+      <ul>
+        <li><code>monitor</code>, <code>applicationinsights</code>, <code>applens</code>, <code>resourcehealth</code>, <code>datadog</code>, <code>grafana</code>, <code>workbooks</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>DevOps, IaC &amp; AI</h3>
+      <ul>
+        <li><code>deploy</code>, <code>azd</code>, <code>bicepschema</code>, <code>azureterraformbestpractices</code>, <code>cloudarchitect</code>, <code>foundry</code>, <code>foundryextensions</code>, <code>get_azure_bestpractices</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Governance &amp; Misc</h3>
+      <ul>
+        <li><code>subscription_list</code>, <code>group_list</code>, <code>group_resource_list</code>, <code>pricing</code>, <code>quota</code>, <code>marketplace</code>, <code>search</code>, <code>documentation</code>, <code>servicebus</code>, <code>servicefabric</code>, <code>eventgrid</code>, <code>eventhubs</code>, <code>signalr</code>, <code>speech</code>, <code>communication</code>, <code>deviceregistry</code>, <code>virtualdesktop</code>, <code>loadtesting</code>, <code>azuremigrate</code>, <code>wellarchitectedframework</code>, <code>extension_azqr</code>, <code>extension_cli_generate</code>, <code>extension_cli_install</code></li>
+      </ul>
+    </div>
+  </div>
+  <p class="small">Note: <code>kusto</code> appears both here (Azure MCP's generic ADX wrapper) and as the dedicated local Kusto MCP (slide 8). Prefer the local Kusto MCP for build-triage KQL — it has purpose-built tools and known-good defaults for this workspace.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 14: SAFETY MATRIX -->
+<section class="slide" id="safety">
+  <h2>Safety &amp; Read/Write Matrix</h2>
+  <p class="subtitle">What each server can and cannot do</p>
+  <table>
+    <tr><th>Server</th><th>Read</th><th>Write</th><th>Confirmation required before write?</th></tr>
+    <tr><td>ADO</td><td>✅</td><td>✅</td><td>PR/branch/work-item writes — yes for merges/deletes</td></tr>
+    <tr><td>ES Build Data</td><td>✅</td><td>—</td><td>n/a (read-only)</td></tr>
+    <tr><td>ICM</td><td>✅</td><td>—</td><td>n/a (read-only — use portal API scripts for writes)</td></tr>
+    <tr><td>Kusto</td><td>✅</td><td>—</td><td>n/a (read-only, management commands blocked)</td></tr>
+    <tr><td>Playwright</td><td>✅</td><td>✅</td><td>No SSO/auth sites; destructive UI actions confirmed manually</td></tr>
+    <tr><td>EngineeringHub</td><td>✅</td><td>—</td><td>n/a (read-only)</td></tr>
+    <tr><td>Work IQ Teams</td><td>✅</td><td>✅</td><td><strong>Yes</strong> — sends, deletes, member changes</td></tr>
+    <tr><td>Work IQ Mail</td><td>✅</td><td>✅</td><td><strong>Yes</strong> — send, reply, forward, delete</td></tr>
+    <tr><td>Azure MCP (optional)</td><td>✅</td><td>✅ (deploy tools)</td><td><strong>Yes</strong> — resource deploy/modify actions</td></tr>
+  </table>
+  <blockquote>Hard rules: never approve/merge PRs autonomously, never push to main/master, never delete branches without confirmation, never send Teams/emails without confirmation, never expose secrets.</blockquote>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════ SLIDE 15: DECISION TREE -->
+<section class="slide" id="decision">
+  <h2>Quick Decision Tree</h2>
+  <p class="subtitle">Which MCP do I reach for?</p>
+  <pre>Need to do something?
+├─ ADO work items/PRs/pipelines/repos/wiki      → ADO MCP ✅
+├─ Check build status/failures/ETA              → ES Build Data MCP ✅
+├─ Raw KQL / RI calendar / build notes / crashes → Kusto MCP ✅
+├─ Read ICM incident info                       → ICM MCP ✅
+├─ Write/update ICM                              → ❌ portal API helper scripts
+├─ Browse web page / scrape / BuildSVC UI       → Playwright MCP ✅
+├─ Search eng.ms / TSGs / ServiceTree           → EngineeringHub MCP ✅
+├─ Teams chats/channels/messages                → Work IQ Teams MCP ✅ (confirm sends)
+├─ Read/search/send email                       → Work IQ Mail MCP ✅ (confirm sends)
+├─ Azure resource mgmt / IaC / cost review      → Azure MCP (optional, tool_search first)
+├─ Git push/commit                              → ❌ terminal git commands
+└─ Approve/merge PR                             → ❌ human must do it</pre>
+  <p class="small">Full capability map: <code>.github/instructions/Details/mcp-tools-index.detail.instructions.md</code> &bull; Server registry: <code>.vscode/mcp.json</code></p>
+</section>
+
+
+</div>
+</body>
+</html>

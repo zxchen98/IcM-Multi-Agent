@@ -1,9 +1,10 @@
 """
-v3 CLI — MCP-backed daily IcM triage with a human-approval gate.
+v3 CLI — local-MCP daily IcM triage (binary: infra vs route_to_owner) with a
+human-approval gate.
 
     python main.py triage     # Phase 1: fetch batch, classify, draft -> output/review.json
-    # ... open output/review.json, set "approved": true on the ones to run ...
-    python main.py execute    # Phase 2: perform approved send_email / post_discussion actions
+    # ... open output/review.json, set "approved": true on the ones to keep ...
+    python main.py execute    # Phase 2 (MVP): print approved drafts to send/perform by hand
 
 Single-ticket test (no MCP fetch needed):
     python main.py one "<incident text or id>"

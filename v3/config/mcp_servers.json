@@ -1,12 +1,7 @@
 {
-  "kusto": {
+  "icm-triage": {
     "command": "python",
-    "args": ["../path/to/your/kusto_mcp_server.py"],
+    "args": ["servers/icm_triage_server.py"],
     "transport": "stdio"
-  },
-
-  "icm": {
-    "url": "${ICM_MCP_URL}",
-    "transport": "streamable_http"
   }
 }

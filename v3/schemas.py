@@ -6,23 +6,23 @@ from pydantic import BaseModel, Field
 
 # ---- LangGraph state (what flows between nodes for ONE ticket) -------------
 class TriageState(TypedDict):
-    ticket: dict                 # {"id", "title", "text", ...} from the get-tickets MCP
+    ticket: dict                 # {"id", "title", "text", "owning_team", ...}
     classification: dict         # filled by the classify node
     proposed_actions: list       # filled by the branch node
 
 
 # ---- Structured outputs / persisted decision ------------------------------
 class ProposedAction(BaseModel):
-    kind: Literal["reboot_server", "send_email", "post_discussion"]
-    target: str = Field(..., description="server name / email recipient / ticket id")
-    content: str = Field("", description="drafted body: reboot rationale, email text, or discussion text")
+    kind: Literal["handle_infra", "send_email"]
+    target: str = Field(..., description="server/incident to handle, or email recipient")
+    content: str = Field("", description="drafted handling note or email body")
 
 
 class TicketDecision(BaseModel):
     ticket_id: str
     title: str = ""
-    category: str                        # infra_reboot | route_to_team
-    target_team: Optional[str] = None    # set when category == route_to_team
+    category: str                        # infra | route_to_owner
+    owning_team: Optional[str] = None    # set when category == route_to_owner
     reasoning: str = ""
     proposed_actions: List[ProposedAction] = []
     approved: bool = False               # <-- a human flips this to True in the review file

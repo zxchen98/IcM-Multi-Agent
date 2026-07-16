@@ -20,22 +20,30 @@ REVIEW_JSON = OUTPUT_DIR / "review.json"
 REVIEW_MD = OUTPUT_DIR / "review.md"
 
 
+# Fields shown to the classifier as incident content. AI_TransferredTo is the
+# routing LABEL and is deliberately excluded so classification is a fair prediction.
+_CONTENT_FIELDS = [
+    "Severity", "Product", "ticket_category", "Summary", "Investigation",
+    "AI_ProblemStage", "AI_KeyLog", "AI_Conclusion", "AI_Solution",
+]
+
+
 def _normalize_ticket(raw) -> dict:
-    """
-    Map YOUR MCP's ticket shape into {id, title, text, ...}.
-    Adjust the field names here to match what your get_tickets tool returns.
-    """
+    """Map an icm-triage ticket into {id, title, owning_team, text, label, raw}."""
     if isinstance(raw, str):
-        return {"id": raw, "title": "", "text": raw}
-    if isinstance(raw, dict):
-        return {
-            "id": str(raw.get("id") or raw.get("IncidentId") or raw.get("incident_id") or ""),
-            "title": raw.get("title") or raw.get("Title") or "",
-            "text": raw.get("text") or raw.get("summary") or raw.get("Summary") or json.dumps(raw),
-            "server": raw.get("server") or raw.get("OccurringDeviceName"),
-            "raw": raw,
-        }
-    return {"id": "", "title": "", "text": str(raw)}
+        return {"id": raw, "title": "", "owning_team": "", "text": raw}
+    if not isinstance(raw, dict):
+        return {"id": "", "title": "", "owning_team": "", "text": str(raw)}
+
+    parts = [f"{k}: {raw[k]}" for k in _CONTENT_FIELDS if raw.get(k)]
+    return {
+        "id": str(raw.get("IncidentId") or raw.get("id") or ""),
+        "title": raw.get("Title") or raw.get("title") or "",
+        "owning_team": raw.get("OwningTeamName") or "",
+        "text": "\n".join(parts) or json.dumps(raw, ensure_ascii=False),
+        "label": raw.get("AI_TransferredTo") or "",   # ground truth, for review only
+        "raw": raw,
+    }
 
 
 async def fetch_tickets() -> list[dict]:
@@ -66,7 +74,7 @@ async def triage_batch() -> list[dict]:
                 ticket_id=t.get("id", ""),
                 title=t.get("title", ""),
                 category=cls["category"],
-                target_team=cls.get("target_team"),
+                owning_team=cls.get("owning_team"),
                 reasoning=cls.get("reasoning", ""),
                 proposed_actions=final["proposed_actions"],
                 approved=False,
@@ -87,7 +95,7 @@ def _render_md(decisions: list[dict]) -> str:
     lines = ["# IcM triage review\n", "Set `approved: true` in review.json for actions to execute.\n"]
     for d in decisions:
         lines.append(f"## {d['ticket_id']} — {d['title']}")
-        tgt = f" → {d['target_team']}" if d.get("target_team") else ""
+        tgt = f" → {d['owning_team']}" if d.get("owning_team") else ""
         lines.append(f"**{d['category']}{tgt}** — {d['reasoning']}\n")
         for a in d["proposed_actions"]:
             lines.append(f"- `{a['kind']}` → **{a['target']}**")
